@@ -1,5 +1,5 @@
 {
-  "name": "kommit-ai",
+  "name": "@kommit/cli",
   "version": "0.1.0",
   "description": "CLI to install the Kommit MCP server for AI coding tools",
   "bin": { "kommit": "./bin/run" },
