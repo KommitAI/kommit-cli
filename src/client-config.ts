@@ -37,7 +37,7 @@ function getClientTargets(): Record<string, ClientTarget> {
   const { baseDir, vscodePath } = getPlatformPaths();
   const homeDir = os.homedir();
   return {
-    "claude-code": { path: path.join(homeDir, ".claude.json"), localPath: path.join(process.cwd(), ".mcp.json"), configKey: "mcpServers", nativeUrl: true },
+    "claude-code": { path: path.join(homeDir, ".claude.json"), localPath: path.join(process.cwd(), ".mcp.json"), configKey: "mcpServers" },
     cursor: { path: path.join(homeDir, ".cursor", "mcp.json"), localPath: path.join(process.cwd(), ".cursor", "mcp.json"), configKey: "mcpServers", nativeUrl: true },
     vscode: { path: path.join(baseDir, vscodePath, "mcp.json"), localPath: path.join(process.cwd(), ".vscode", "mcp.json"), configKey: "mcpServers", nativeUrl: true },
     "claude-desktop": { path: path.join(baseDir, "Claude", "claude_desktop_config.json"), configKey: "mcpServers" },
