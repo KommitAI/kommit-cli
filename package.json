@@ -1,16 +1,37 @@
 {
   "name": "@kommit/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI to install the Kommit MCP server for AI coding tools",
-  "bin": { "kommit": "./bin/run" },
-  "files": ["dist", "bin"],
+  "bin": {
+    "kommit": "./bin/run"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
   "scripts": {
     "build": "tsup-node",
     "dev": "tsup-node --watch",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["kommit", "mcp", "cli", "ai", "claude", "cursor", "vscode"],
+  "keywords": [
+    "kommit",
+    "mcp",
+    "cli",
+    "ai",
+    "claude",
+    "cursor",
+    "vscode"
+  ],
   "author": "Kommit AI <hello@usekommit.ai>",
+  "homepage": "https://github.com/KommitAI/kommit-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KommitAI/kommit-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KommitAI/kommit-cli/issues"
+  },
   "license": "MIT",
   "dependencies": {
     "@iarna/toml": "^2.2.5",
