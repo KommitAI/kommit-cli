@@ -54,7 +54,9 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
   const stdioArgs = ["-y", "mcp-remote@latest", MCP_URL, "--header", `Authorization: Bearer ${apiKey}`];
 
   if (isNativeUrlClient(client)) {
-    serverConfig = { type: "url", url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
+    // Claude Code uses "http", Cursor/VS Code use "url"
+    const transportType = client === "claude-code" ? "http" : "url";
+    serverConfig = { type: transportType, url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   } else if (client === "goose") {
     serverConfig = { name: serverName, cmd: npxCmd, args: stdioArgs, enabled: true, envs: {}, type: "stdio", timeout: 300 };
   } else if (client === "zed") {
