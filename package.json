@@ -1,0 +1,31 @@
+{
+  "name": "kommit",
+  "version": "0.1.0",
+  "description": "CLI to install the Kommit MCP server for AI coding tools",
+  "bin": { "kommit": "./bin/run" },
+  "files": ["dist", "bin"],
+  "scripts": {
+    "build": "tsup-node",
+    "dev": "tsup-node --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["kommit", "mcp", "cli", "ai", "claude", "cursor", "vscode"],
+  "author": "Kommit AI <hello@usekommit.ai>",
+  "license": "MIT",
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "consola": "^3.4.2",
+    "js-yaml": "^4.1.0",
+    "jsonc-parser": "^3.3.1",
+    "open": "^10.1.0",
+    "picocolors": "^1.1.1",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.19.8",
+    "@types/yargs": "^17.0.33",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
+  }
+}
