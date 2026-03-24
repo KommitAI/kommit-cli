@@ -6,7 +6,7 @@ import { authenticateViaBrowser, authenticateViaPrompt, validateKey } from "../a
 
 const MCP_URL = "https://getkommit.ai/api/mcp";
 
-export interface InstallArgs { client?: string; key?: string; global?: boolean; name?: string; }
+export interface InstallArgs { client?: string; key?: string; global?: boolean; local?: boolean; name?: string; }
 export const command = "$0";
 export const describe = "Install the Kommit MCP server";
 
@@ -14,7 +14,8 @@ export function builder(yargs: Argv<InstallArgs>): Argv {
   return yargs
     .option("client", { type: "string", description: "AI tool to install for", choices: clientNames })
     .option("key", { type: "string", description: "API key (skip browser auth)" })
-    .option("global", { type: "boolean", description: "Write to global config instead of project-local", default: false })
+    .option("global", { type: "boolean", description: "Write to global config (available in all projects)", default: true })
+    .option("local", { type: "boolean", description: "Write to project-local config instead of global", default: false })
     .option("name", { type: "string", description: "Server name in the config", default: "kommit" });
 }
 
@@ -26,7 +27,7 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
     client = (await logger.prompt("Select a client:", { type: "select", options: clientNames.map((name) => ({ value: name, label: name })) })) as string;
   }
 
-  const local = !argv.global;
+  const local = argv.local === true;
   const serverName = argv.name || "kommit";
   logger.info(`Installing MCP server "${serverName}" for ${client}`);
 
