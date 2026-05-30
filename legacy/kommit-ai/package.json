@@ -1,0 +1,32 @@
+{
+  "name": "kommit-ai",
+  "version": "0.1.1",
+  "description": "Legacy package for the Kommit CLI. Use @kommit/cli instead.",
+  "bin": {
+    "kommit": "bin/run"
+  },
+  "files": [
+    "README.md",
+    "bin"
+  ],
+  "keywords": [
+    "kommit",
+    "mcp",
+    "cli",
+    "ai",
+    "claude",
+    "cursor",
+    "vscode"
+  ],
+  "author": "Kommit AI <hello@usekommit.ai>",
+  "homepage": "https://github.com/KommitAI/kommit-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KommitAI/kommit-cli.git",
+    "directory": "legacy/kommit-ai"
+  },
+  "bugs": {
+    "url": "https://github.com/KommitAI/kommit-cli/issues"
+  },
+  "license": "MIT"
+}
