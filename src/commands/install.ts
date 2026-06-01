@@ -23,6 +23,9 @@ export function builder(yargs: Argv<InstallArgs>): Argv {
 export function resolveConfigScope(argv: Pick<InstallArgs, "scope" | "global" | "local">): ConfigScope {
   if (argv.global && argv.local) throw new Error("Use only one of --global or --local.");
   if (argv.scope && (argv.global || argv.local)) throw new Error("Use either --scope or the legacy --global/--local flags.");
+  if (argv.scope !== undefined && argv.scope !== "user" && argv.scope !== "project") {
+    throw new Error(`Invalid --scope "${argv.scope}". Use "user" or "project".`);
+  }
   if (argv.local) return "project";
   if (argv.global) return "user";
   return argv.scope ?? "user";
@@ -73,7 +76,7 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
   const serverName = argv.name || "kommit";
   logger.info(`Installing MCP server "${serverName}" for ${client} (${scope} scope)`);
 
-  let apiKey = argv.key as string | undefined;
+  let apiKey = typeof argv.key === "string" ? argv.key.trim() : undefined;
   if (!apiKey) {
     apiKey = (await authenticateViaBrowser()) ?? undefined;
     if (!apiKey) apiKey = await authenticateViaPrompt();

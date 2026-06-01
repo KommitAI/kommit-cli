@@ -19,6 +19,10 @@ describe("resolveConfigScope", () => {
     expect(() => resolveConfigScope({ scope: "project", global: true })).toThrow(/Use either --scope/);
     expect(() => resolveConfigScope({ scope: "user", local: true })).toThrow(/Use either --scope/);
   });
+
+  it("rejects invalid scope values instead of falling back to user scope", () => {
+    expect(() => resolveConfigScope({ scope: "local" as any })).toThrow(/Invalid --scope "local"/);
+  });
 });
 
 describe("createServerConfig", () => {

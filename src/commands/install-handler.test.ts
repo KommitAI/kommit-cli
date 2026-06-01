@@ -17,7 +17,19 @@ vi.mock("../logger", () => ({
   },
 }));
 
+vi.mock("../client-config", () => ({
+  clientNames: ["cursor", "codex"],
+  getTarget: vi.fn((client: string, scope: string) => {
+    if (client === "codex" && scope === "project") {
+      throw new Error("codex does not support project-scoped config");
+    }
+    return { path: "/tmp/kommit-config", configKey: "mcpServers" };
+  }),
+  writeConfig: vi.fn(() => "/tmp/kommit-config"),
+}));
+
 import { authenticateViaBrowser, authenticateViaPrompt, validateKey } from "../auth";
+import { writeConfig } from "../client-config";
 import { logger } from "../logger";
 import { handler } from "./install";
 
@@ -26,6 +38,9 @@ describe("handler auth ordering", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(authenticateViaBrowser).mockResolvedValue(null);
+    vi.mocked(authenticateViaPrompt).mockResolvedValue("km_prompt");
+    vi.mocked(validateKey).mockResolvedValue(true);
     exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: string | number | null) => {
       throw new Error(`process.exit:${code}`);
     }) as never);
@@ -44,5 +59,27 @@ describe("handler auth ordering", () => {
     expect(authenticateViaBrowser).not.toHaveBeenCalled();
     expect(authenticateViaPrompt).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("codex does not support project-scoped config"));
+  });
+
+  it("trims an API key provided with --key before validating and writing config", async () => {
+    await handler({ client: "cursor", scope: "user", key: "  km_test  ", _: [], $0: "kommit" } as any);
+
+    expect(authenticateViaBrowser).not.toHaveBeenCalled();
+    expect(authenticateViaPrompt).not.toHaveBeenCalled();
+    expect(validateKey).toHaveBeenCalledWith("km_test");
+    expect(writeConfig).toHaveBeenCalledWith(
+      "kommit",
+      expect.objectContaining({ headers: { Authorization: "Bearer km_test" } }),
+      "cursor",
+      "user",
+    );
+  });
+
+  it("falls back to prompt auth when browser auth returns no key", async () => {
+    await handler({ client: "cursor", scope: "user", _: [], $0: "kommit" } as any);
+
+    expect(authenticateViaBrowser).toHaveBeenCalledOnce();
+    expect(authenticateViaPrompt).toHaveBeenCalledOnce();
+    expect(validateKey).toHaveBeenCalledWith("km_prompt");
   });
 });
