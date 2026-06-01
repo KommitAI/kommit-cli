@@ -39,32 +39,41 @@ function createMcpRemoteArgs(apiKey: string): string[] {
   return ["-y", "mcp-remote@latest", MCP_URL, "--header", `Authorization: Bearer ${apiKey}`];
 }
 
+function normalizeClientName(client: string): string {
+  const normalized = client.toLowerCase();
+  if (!clientNames.includes(normalized)) throw new Error(`Unknown client: ${client}`);
+  return normalized;
+}
+
 export function createServerConfig(client: string, serverName: string, apiKey: string): ClientConfig {
+  const clientName = normalizeClientName(client);
+  if (clientName === "warp") throw new Error("warp requires manual setup through its UI. Use createWarpManualConfig.");
+
   const npxCmd = getNpxCommand();
   const stdioArgs = createMcpRemoteArgs(apiKey);
 
-  if (client === "claude-code" || client === "vscode") {
+  if (clientName === "claude-code" || clientName === "vscode") {
     return { type: "http", url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
-  if (client === "cursor") {
+  if (clientName === "cursor") {
     return { url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
-  if (client === "codex") {
+  if (clientName === "codex") {
     return { url: MCP_URL, http_headers: { Authorization: `Bearer ${apiKey}` } };
   }
-  if (client === "gemini-cli") {
+  if (clientName === "gemini-cli") {
     return { httpUrl: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
-  if (client === "droid") {
+  if (clientName === "droid") {
     return { type: "http", url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
-  if (client === "zed") {
+  if (clientName === "zed") {
     return { url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
-  if (client === "goose") {
+  if (clientName === "goose") {
     return { name: serverName, cmd: npxCmd, args: stdioArgs, enabled: true, envs: {}, type: "stdio", timeout: 300 };
   }
-  if (client === "opencode") {
+  if (clientName === "opencode") {
     return { type: "remote", url: MCP_URL, enabled: true, headers: { Authorization: `Bearer ${apiKey}` } };
   }
   return { command: npxCmd, args: stdioArgs };

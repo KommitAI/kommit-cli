@@ -86,6 +86,13 @@ describe("createServerConfig", () => {
     });
   });
 
+  it("normalizes client names before selecting the config shape", () => {
+    expect(createServerConfig("Cursor", "kommit", "km_test")).toEqual({
+      url: "https://getkommit.ai/api/mcp",
+      headers: { Authorization: "Bearer km_test" },
+    });
+  });
+
   it("uses Codex's native HTTP TOML shape", () => {
     expect(createServerConfig("codex", "kommit", "km_test")).toEqual({
       url: "https://getkommit.ai/api/mcp",
@@ -120,6 +127,14 @@ describe("createServerConfig", () => {
       command: process.platform === "win32" ? "npx.cmd" : "npx",
       args: ["-y", "mcp-remote@latest", "https://getkommit.ai/api/mcp", "--header", "Authorization: Bearer km_test"],
     });
+  });
+
+  it("rejects unknown clients instead of falling back to stdio config", () => {
+    expect(() => createServerConfig("unknown", "kommit", "km_test")).toThrow(/Unknown client: unknown/);
+  });
+
+  it("rejects Warp because it needs the manual setup config helper", () => {
+    expect(() => createServerConfig("warp", "kommit", "km_test")).toThrow(/warp requires manual setup/);
   });
 });
 
