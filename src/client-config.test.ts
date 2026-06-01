@@ -58,6 +58,7 @@ describe("client config", () => {
       `{
   // keep this comment
   "mcpServers": {
+    // keep this server comment
     "existing": {
       "command": "old"
     }
@@ -77,6 +78,7 @@ describe("client config", () => {
     expect(fs.realpathSync(writtenPath)).toBe(fs.realpathSync(configPath));
     const content = fs.readFileSync(configPath, "utf8");
     expect(content).toContain("// keep this comment");
+    expect(content).toContain("// keep this server comment");
 
     const parsed = jsonc.parse(content);
     expect(parsed.otherSetting).toBe(true);
