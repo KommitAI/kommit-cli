@@ -31,9 +31,17 @@ export function resolveConfigScope(argv: Pick<InstallArgs, "scope" | "global" | 
   return argv.scope ?? "user";
 }
 
+function getNpxCommand(): string {
+  return process.platform === "win32" ? "npx.cmd" : "npx";
+}
+
+function createMcpRemoteArgs(apiKey: string): string[] {
+  return ["-y", "mcp-remote@latest", MCP_URL, "--header", `Authorization: Bearer ${apiKey}`];
+}
+
 export function createServerConfig(client: string, serverName: string, apiKey: string): ClientConfig {
-  const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
-  const stdioArgs = ["-y", "mcp-remote@latest", MCP_URL, "--header", `Authorization: Bearer ${apiKey}`];
+  const npxCmd = getNpxCommand();
+  const stdioArgs = createMcpRemoteArgs(apiKey);
 
   if (client === "claude-code" || client === "vscode") {
     return { type: "http", url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
@@ -60,6 +68,18 @@ export function createServerConfig(client: string, serverName: string, apiKey: s
     return { type: "remote", url: MCP_URL, enabled: true, headers: { Authorization: `Bearer ${apiKey}` } };
   }
   return { command: npxCmd, args: stdioArgs };
+}
+
+export function createWarpManualConfig(serverName: string, apiKey: string): ClientConfig {
+  return {
+    [serverName]: {
+      command: getNpxCommand(),
+      args: createMcpRemoteArgs(apiKey),
+      env: {},
+      working_directory: null,
+      start_on_launch: true,
+    },
+  };
 }
 
 export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
@@ -92,9 +112,8 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
   logger.success(green("Authenticated successfully"));
 
   if (client === "warp") {
-    const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
     logger.log(""); logger.info("Warp requires manual setup through their UI."); logger.log("  Copy this config into your Warp MCP settings:\n");
-    logger.log(green(JSON.stringify({ [serverName]: { command: npxCmd, args: ["-y", "mcp-remote@latest", MCP_URL, "--header", `Authorization: Bearer ${apiKey}`], env: {}, working_directory: null, start_on_launch: true } }, null, 2)));
+    logger.log(green(JSON.stringify(createWarpManualConfig(serverName, apiKey), null, 2)));
     logger.log(""); return;
   }
 

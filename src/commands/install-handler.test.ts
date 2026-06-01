@@ -18,10 +18,13 @@ vi.mock("../logger", () => ({
 }));
 
 vi.mock("../client-config", () => ({
-  clientNames: ["cursor", "codex"],
+  clientNames: ["cursor", "codex", "warp"],
   getTarget: vi.fn((client: string, scope: string) => {
     if (client === "codex" && scope === "project") {
       throw new Error("codex does not support project-scoped config");
+    }
+    if (client === "warp") {
+      return { manual: true, configKey: "mcpServers" };
     }
     return { path: "/tmp/kommit-config", configKey: "mcpServers" };
   }),
@@ -81,5 +84,19 @@ describe("handler auth ordering", () => {
     expect(authenticateViaBrowser).toHaveBeenCalledOnce();
     expect(authenticateViaPrompt).toHaveBeenCalledOnce();
     expect(validateKey).toHaveBeenCalledWith("km_prompt");
+  });
+
+  it("prints Warp manual setup config without writing a config file", async () => {
+    await handler({ client: "warp", scope: "user", key: "  km_test  ", name: "memory", _: [], $0: "kommit" } as any);
+
+    expect(validateKey).toHaveBeenCalledWith("km_test");
+    expect(writeConfig).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith("Warp requires manual setup through their UI.");
+
+    const output = vi.mocked(logger.log).mock.calls.map(([message]) => String(message ?? "")).join("\n");
+    expect(output).toContain('"memory"');
+    expect(output).toContain("mcp-remote@latest");
+    expect(output).toContain("Authorization: Bearer km_test");
+    expect(output).not.toContain("  km_test  ");
   });
 });
