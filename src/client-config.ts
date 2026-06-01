@@ -17,7 +17,6 @@ interface ClientTarget {
   localPath?: string;
   configKey: string;
   format?: "json" | "yaml" | "toml";
-  nativeUrl?: boolean;
 }
 
 function getFormatName(target: ClientTarget): string {
@@ -49,9 +48,9 @@ function getClientTargets(): Record<string, ClientTarget> {
   const { baseDir, vscodePath } = getPlatformPaths();
   const homeDir = getHomeDir();
   return {
-    "claude-code": { path: path.join(homeDir, ".claude.json"), localPath: path.join(process.cwd(), ".mcp.json"), configKey: "mcpServers", nativeUrl: true },
-    cursor: { path: path.join(homeDir, ".cursor", "mcp.json"), localPath: path.join(process.cwd(), ".cursor", "mcp.json"), configKey: "mcpServers", nativeUrl: true },
-    vscode: { path: path.join(baseDir, vscodePath, "mcp.json"), localPath: path.join(process.cwd(), ".vscode", "mcp.json"), configKey: "servers", nativeUrl: true },
+    "claude-code": { path: path.join(homeDir, ".claude.json"), localPath: path.join(process.cwd(), ".mcp.json"), configKey: "mcpServers" },
+    cursor: { path: path.join(homeDir, ".cursor", "mcp.json"), localPath: path.join(process.cwd(), ".cursor", "mcp.json"), configKey: "mcpServers" },
+    vscode: { path: path.join(baseDir, vscodePath, "mcp.json"), localPath: path.join(process.cwd(), ".vscode", "mcp.json"), configKey: "servers" },
     "claude-desktop": { path: path.join(baseDir, "Claude", "claude_desktop_config.json"), configKey: "mcpServers" },
     windsurf: { path: path.join(homeDir, ".codeium", "windsurf", "mcp_config.json"), configKey: "mcpServers" },
     cline: { path: path.join(baseDir, vscodePath, "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json"), configKey: "mcpServers" },
@@ -97,11 +96,6 @@ export function getTarget(client: string, scope?: ConfigScope | boolean): Client
     return { ...target, path: target.localPath };
   }
   return target;
-}
-
-export function isNativeUrlClient(client: string): boolean {
-  const targets = getClientTargets();
-  return targets[client.toLowerCase()]?.nativeUrl === true;
 }
 
 function isConfigObject(value: unknown): value is ClientConfig {
