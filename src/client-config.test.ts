@@ -188,6 +188,46 @@ describe("client config", () => {
     );
   });
 
+  it("fails clearly when JSONC server container is not an object without rewriting the file", () => {
+    const configPath = path.join(projectDir, ".cursor", "mcp.json");
+    mkdirp(path.dirname(configPath));
+    const originalContent = `{
+  "mcpServers": true,
+  "otherSetting": true
+}
+`;
+    fs.writeFileSync(configPath, originalContent);
+
+    expect(() => writeConfig("kommit", { command: "npx" }, "cursor", "project")).toThrow(
+      /Config key "mcpServers"[\s\S]*must be an object[\s\S]*no changes were written/,
+    );
+    expect(fs.readFileSync(configPath, "utf8")).toBe(originalContent);
+  });
+
+  it("fails clearly when YAML server container is not an object without rewriting the file", () => {
+    const configPath = path.join(homeDir, ".config", "goose", "config.yaml");
+    mkdirp(path.dirname(configPath));
+    const originalContent = "extensions:\n  - old\nother: true\n";
+    fs.writeFileSync(configPath, originalContent);
+
+    expect(() => writeConfig("kommit", { command: "npx" }, "goose", "user")).toThrow(
+      /Config key "extensions"[\s\S]*must be an object[\s\S]*no changes were written/,
+    );
+    expect(fs.readFileSync(configPath, "utf8")).toBe(originalContent);
+  });
+
+  it("fails clearly when TOML server container is not an object without rewriting the file", () => {
+    const configPath = path.join(homeDir, ".codex", "config.toml");
+    mkdirp(path.dirname(configPath));
+    const originalContent = 'model = "gpt-5"\nmcp_servers = "bad"\n';
+    fs.writeFileSync(configPath, originalContent);
+
+    expect(() => writeConfig("kommit", { command: "npx" }, "codex", "user")).toThrow(
+      /Config key "mcp_servers"[\s\S]*must be an object[\s\S]*no changes were written/,
+    );
+    expect(fs.readFileSync(configPath, "utf8")).toBe(originalContent);
+  });
+
   it("fails with an actionable error for malformed JSONC without rewriting the file", () => {
     const configPath = path.join(projectDir, ".cursor", "mcp.json");
     mkdirp(path.dirname(configPath));

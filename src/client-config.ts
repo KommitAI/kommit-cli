@@ -104,15 +104,53 @@ export function isNativeUrlClient(client: string): boolean {
   return targets[client.toLowerCase()]?.nativeUrl === true;
 }
 
-function getNestedValue(obj: ClientConfig, keyPath: string): ClientConfig | undefined {
-  return keyPath.split(".").reduce((cur, key) => cur?.[key], obj);
+function isConfigObject(value: unknown): value is ClientConfig {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getNestedValue(obj: ClientConfig, keyPath: string): unknown {
+  return keyPath.split(".").reduce<unknown>((cur, key) => (isConfigObject(cur) ? cur[key] : undefined), obj);
 }
 
 function setNestedValue(obj: ClientConfig, keyPath: string, value: ClientConfig): void {
   const keys = keyPath.split(".");
   const last = keys.pop()!;
-  const parent = keys.reduce((cur, key) => { if (!cur[key]) cur[key] = {}; return cur[key]; }, obj);
+  const parent = keys.reduce((cur, key) => {
+    const next = cur[key];
+    if (next === undefined) {
+      cur[key] = {};
+      return cur[key];
+    }
+    if (!isConfigObject(next)) {
+      throw new Error(`Config key "${key}" must be an object.`);
+    }
+    return next;
+  }, obj);
   parent[last] = value;
+}
+
+function ensureNestedObject(obj: ClientConfig, keyPath: string, targetPath: string): ClientConfig {
+  const keys = keyPath.split(".");
+  let cur: ClientConfig = obj;
+  let currentPath = "";
+
+  for (const key of keys) {
+    currentPath = currentPath ? `${currentPath}.${key}` : key;
+    const next = cur[key];
+    if (next === undefined) {
+      cur[key] = {};
+      cur = cur[key];
+      continue;
+    }
+    if (!isConfigObject(next)) {
+      throw new Error(
+        `Config key "${currentPath}" in ${targetPath} must be an object. Fix the file and rerun; no changes were written.`,
+      );
+    }
+    cur = next;
+  }
+
+  return cur;
 }
 
 function parseJsoncConfig(content: string, targetPath: string): ClientConfig {
@@ -189,8 +227,7 @@ export function writeConfig(serverName: string, serverConfig: ClientConfig, clie
     existing = parseConfigContent(originalContent, target);
   }
 
-  if (!getNestedValue(existing, target.configKey)) setNestedValue(existing, target.configKey, {});
-  const servers = getNestedValue(existing, target.configKey)!;
+  const servers = ensureNestedObject(existing, target.configKey, target.path);
   servers[serverName] = serverConfig;
 
   let output: string;
