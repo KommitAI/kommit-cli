@@ -62,7 +62,7 @@ function getClientTargets(): Record<string, ClientTarget> {
     codex: { path: path.join(process.env.CODEX_HOME || path.join(homeDir, ".codex"), "config.toml"), configKey: "mcp_servers", format: "toml" },
     aider: { path: path.join(homeDir, ".aider", "mcp.yml"), localPath: path.join(process.cwd(), ".aider.mcp.yml"), configKey: "servers", format: "yaml" },
     droid: { path: path.join(homeDir, ".factory", "mcp.json"), localPath: path.join(process.cwd(), ".factory", "mcp.json"), configKey: "mcpServers" },
-    opencode: { path: path.join(homeDir, ".config", "opencode", "opencode.json"), localPath: path.join(process.cwd(), ".opencode.json"), configKey: "mcp" },
+    opencode: { path: path.join(homeDir, ".config", "opencode", "opencode.json"), localPath: path.join(process.cwd(), "opencode.json"), configKey: "mcp" },
     witsy: { path: path.join(baseDir, "Witsy", "settings.json"), configKey: "mcpServers" },
     enconvo: { path: path.join(homeDir, ".config", "enconvo", "mcp_config.json"), configKey: "mcpServers" },
     "aider-desk": { path: process.platform === "win32" ? path.join(process.env.APPDATA || path.join(homeDir, "AppData", "Roaming"), "aider-desk", "settings.json") : process.platform === "darwin" ? path.join(homeDir, "Library", "Application Support", "aider-desk", "settings.json") : path.join(homeDir, ".config", "aider-desk", "settings.json"), configKey: "mcpServers" },

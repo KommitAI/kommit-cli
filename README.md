@@ -33,6 +33,7 @@ Requires Node.js 20 or newer.
 | Goose | stdio | `~/.config/goose/config.yaml` | Not supported |
 | Gemini CLI | Native HTTP | `~/.gemini/settings.json` | `.gemini/settings.json` |
 | Aider | stdio | `~/.aider/mcp.yml` | `.aider.mcp.yml` |
+| OpenCode | Native remote URL | `~/.config/opencode/opencode.json` | `opencode.json` |
 | More clients | varies | Client-specific user config | Client-specific; unsupported clients fail clearly |
 
 Clients with native remote transport connect directly to the Kommit API — no proxy process needed. Stdio clients use `mcp-remote` as a bridge.
