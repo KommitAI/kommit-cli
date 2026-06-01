@@ -126,6 +126,23 @@ describe("client config", () => {
     expect(parsed.context_servers.kommit.command).toBeUndefined();
   });
 
+  it("writes OpenCode project config to opencode.json in the project root", () => {
+    const configPath = path.join(projectDir, "opencode.json");
+    const writtenPath = writeConfig(
+      "kommit",
+      { type: "remote", url: "https://getkommit.ai/api/mcp", enabled: true, headers: { Authorization: "Bearer test" } },
+      "opencode",
+      "project",
+    );
+
+    expect(fs.realpathSync(writtenPath)).toBe(fs.realpathSync(configPath));
+    expect(fs.existsSync(path.join(projectDir, ".opencode.json"))).toBe(false);
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.mcp.kommit.type).toBe("remote");
+    expect(parsed.mcp.kommit.url).toBe("https://getkommit.ai/api/mcp");
+    expect(parsed.mcp.kommit.headers.Authorization).toBe("Bearer test");
+  });
+
   it("writes YAML config while preserving other top-level keys", () => {
     const configPath = path.join(homeDir, ".config", "goose", "config.yaml");
     mkdirp(path.dirname(configPath));
