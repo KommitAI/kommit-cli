@@ -20,6 +20,12 @@ interface ClientTarget {
   nativeUrl?: boolean;
 }
 
+function getFormatName(target: ClientTarget): string {
+  if (target.format === "yaml") return "YAML";
+  if (target.format === "toml") return "TOML";
+  return "JSONC";
+}
+
 function getPlatformPaths() {
   const homeDir = getHomeDir();
   const platform = process.platform;
@@ -45,7 +51,7 @@ function getClientTargets(): Record<string, ClientTarget> {
   return {
     "claude-code": { path: path.join(homeDir, ".claude.json"), localPath: path.join(process.cwd(), ".mcp.json"), configKey: "mcpServers", nativeUrl: true },
     cursor: { path: path.join(homeDir, ".cursor", "mcp.json"), localPath: path.join(process.cwd(), ".cursor", "mcp.json"), configKey: "mcpServers", nativeUrl: true },
-    vscode: { path: path.join(baseDir, vscodePath, "mcp.json"), localPath: path.join(process.cwd(), ".vscode", "mcp.json"), configKey: "mcpServers", nativeUrl: true },
+    vscode: { path: path.join(baseDir, vscodePath, "mcp.json"), localPath: path.join(process.cwd(), ".vscode", "mcp.json"), configKey: "servers", nativeUrl: true },
     "claude-desktop": { path: path.join(baseDir, "Claude", "claude_desktop_config.json"), configKey: "mcpServers" },
     windsurf: { path: path.join(homeDir, ".codeium", "windsurf", "mcp_config.json"), configKey: "mcpServers" },
     cline: { path: path.join(baseDir, vscodePath, "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json"), configKey: "mcpServers" },
@@ -108,13 +114,66 @@ function setNestedValue(obj: ClientConfig, keyPath: string, value: ClientConfig)
   parent[last] = value;
 }
 
+function parseJsoncConfig(content: string, targetPath: string): ClientConfig {
+  const errors: jsonc.ParseError[] = [];
+  const parsed = jsonc.parse(content, errors, { allowTrailingComma: true });
+  if (errors.length > 0) {
+    const firstError = errors[0];
+    const prefix = content.slice(0, firstError.offset);
+    const lines = prefix.split(/\r\n|\r|\n/);
+    const line = lines.length;
+    const column = lines[lines.length - 1].length + 1;
+    throw new Error(`JSONC parse error at line ${line}, column ${column}: ${jsonc.printParseErrorCode(firstError.error)}`);
+  }
+  if (parsed === undefined) return {};
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("top-level value must be an object");
+  }
+  return parsed as ClientConfig;
+}
+
+function parseConfigContent(content: string, target: ClientTarget): ClientConfig {
+  try {
+    let parsed: unknown;
+    if (target.format === "yaml") parsed = yaml.load(content) || {};
+    else if (target.format === "toml") parsed = TOML.parse(content);
+    else parsed = parseJsoncConfig(content, target.path);
+
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("top-level value must be an object");
+    }
+    return parsed as ClientConfig;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Could not parse ${getFormatName(target)} config at ${target.path}: ${detail}. Fix the file and rerun; no changes were written.`,
+    );
+  }
+}
+
+function writeFileAtomic(targetPath: string, content: string): void {
+  const tempPath = path.join(path.dirname(targetPath), `.${path.basename(targetPath)}.${process.pid}.${Date.now()}.tmp`);
+  try {
+    fs.writeFileSync(tempPath, content);
+    if (fs.existsSync(targetPath)) {
+      fs.chmodSync(tempPath, fs.statSync(targetPath).mode);
+    }
+    fs.renameSync(tempPath, targetPath);
+  } catch (err) {
+    try {
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    } catch {
+      // Ignore cleanup failures and report the original write error.
+    }
+    throw err;
+  }
+}
+
 export function readConfig(client: string, scope?: ConfigScope | boolean): ClientConfig {
   const target = getTarget(client, scope);
   if (!fs.existsSync(target.path)) { const config: ClientConfig = {}; setNestedValue(config, target.configKey, {}); return config; }
   const content = fs.readFileSync(target.path, "utf8");
-  if (target.format === "yaml") return (yaml.load(content) as ClientConfig) || {};
-  if (target.format === "toml") return TOML.parse(content) as ClientConfig;
-  return jsonc.parse(content) as ClientConfig;
+  return parseConfigContent(content, target);
 }
 
 export function writeConfig(serverName: string, serverConfig: ClientConfig, client: string, scope?: ConfigScope | boolean): string {
@@ -126,9 +185,7 @@ export function writeConfig(serverName: string, serverConfig: ClientConfig, clie
   let existing: ClientConfig = {};
   if (fs.existsSync(target.path)) {
     originalContent = fs.readFileSync(target.path, "utf8");
-    if (target.format === "yaml") existing = (yaml.load(originalContent) as ClientConfig) || {};
-    else if (target.format === "toml") existing = TOML.parse(originalContent) as ClientConfig;
-    else existing = jsonc.parse(originalContent) as ClientConfig;
+    existing = parseConfigContent(originalContent, target);
   }
 
   if (!getNestedValue(existing, target.configKey)) setNestedValue(existing, target.configKey, {});
@@ -151,6 +208,6 @@ export function writeConfig(serverName: string, serverConfig: ClientConfig, clie
     output = JSON.stringify(existing, null, 2);
   }
 
-  fs.writeFileSync(target.path, output);
+  writeFileAtomic(target.path, output);
   return target.path;
 }
