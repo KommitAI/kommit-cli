@@ -11,7 +11,7 @@ vi.mock("./logger", () => ({
   },
 }));
 
-import { authenticateViaBrowser, generatePkcePair, validateKey } from "./auth";
+import { authenticateViaBrowser, authenticateViaPrompt, generatePkcePair, validateKey } from "./auth";
 import { logger } from "./logger";
 
 const originalEnv = { ...process.env };
@@ -43,6 +43,24 @@ describe("authenticateViaBrowser", () => {
     await expect(authenticateViaBrowser()).resolves.toBeNull();
 
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Headless environment detected"));
+  });
+});
+
+describe("authenticateViaPrompt", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("trims prompt-entered API keys", async () => {
+    vi.mocked(logger.prompt).mockResolvedValue("  km_prompt  ");
+
+    await expect(authenticateViaPrompt()).resolves.toBe("km_prompt");
+  });
+
+  it("returns an empty key when the prompt is cancelled", async () => {
+    vi.mocked(logger.prompt).mockResolvedValue(undefined as unknown as string);
+
+    await expect(authenticateViaPrompt()).resolves.toBe("");
   });
 });
 

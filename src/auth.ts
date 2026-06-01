@@ -79,8 +79,8 @@ export async function authenticateViaBrowser(): Promise<string | null> {
 }
 
 export async function authenticateViaPrompt(): Promise<string> {
-  const key = (await logger.prompt("Paste your API key (from getkommit.ai/settings):", { type: "text" })) as string;
-  return key.trim();
+  const key = await logger.prompt("Paste your API key (from getkommit.ai/settings):", { type: "text" });
+  return typeof key === "string" ? key.trim() : "";
 }
 
 export async function validateKey(key: string): Promise<boolean> {
