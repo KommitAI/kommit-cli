@@ -115,10 +115,6 @@ function isConfigObject(value: unknown): value is ClientConfig {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function getNestedValue(obj: ClientConfig, keyPath: string): unknown {
-  return keyPath.split(".").reduce<unknown>((cur, key) => (isConfigObject(cur) ? cur[key] : undefined), obj);
-}
-
 function setNestedValue(obj: ClientConfig, keyPath: string, value: ClientConfig): void {
   const keys = keyPath.split(".");
   const last = keys.pop()!;
@@ -244,9 +240,8 @@ export function writeConfig(serverName: string, serverConfig: ClientConfig, clie
     output = TOML.stringify(existing);
   } else if (originalContent) {
     try {
-      const keyPath = target.configKey.split(".");
-      const newValue = getNestedValue(existing, target.configKey);
-      const edits = jsonc.modify(originalContent, keyPath, newValue, { formattingOptions: { tabSize: 2, insertSpaces: true } });
+      const keyPath = [...target.configKey.split("."), serverName];
+      const edits = jsonc.modify(originalContent, keyPath, serverConfig, { formattingOptions: { tabSize: 2, insertSpaces: true } });
       output = jsonc.applyEdits(originalContent, edits);
     } catch { output = JSON.stringify(existing, null, 2); }
   } else {
