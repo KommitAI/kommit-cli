@@ -104,6 +104,32 @@ describe("validateKey", () => {
     });
   });
 
+  it("trims API keys before validating", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ result: { serverInfo: { name: "kommit" } } }),
+    })) as unknown as typeof fetch;
+    global.fetch = fetchMock;
+
+    await expect(validateKey("  km_test  ")).resolves.toBe(true);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({ "Authorization": "Bearer km_test" }),
+      }),
+    );
+  });
+
+  it("rejects blank API keys without calling the MCP endpoint", async () => {
+    const fetchMock = vi.fn() as unknown as typeof fetch;
+    global.fetch = fetchMock;
+
+    await expect(validateKey("   ")).resolves.toBe(false);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("returns false when the MCP endpoint rejects the key", async () => {
     global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({}) })) as unknown as typeof fetch;
 
