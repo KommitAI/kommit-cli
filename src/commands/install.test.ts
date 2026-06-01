@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import yargs from "yargs";
 import type { ArgumentsCamelCase, Argv } from "yargs";
 
-import { builder, createServerConfig, resolveConfigScope, type InstallArgs } from "./install";
+import { builder, createServerConfig, createWarpManualConfig, resolveConfigScope, type InstallArgs } from "./install";
 
 async function parseCliArgs(args: string[]): Promise<ArgumentsCamelCase<InstallArgs>> {
   return await new Promise((resolve, reject) => {
@@ -112,6 +112,27 @@ describe("createServerConfig", () => {
       type: "http",
       url: "https://getkommit.ai/api/mcp",
       headers: { Authorization: "Bearer km_test" },
+    });
+  });
+
+  it("uses mcp-remote for stdio clients", () => {
+    expect(createServerConfig("claude-desktop", "kommit", "km_test")).toEqual({
+      command: process.platform === "win32" ? "npx.cmd" : "npx",
+      args: ["-y", "mcp-remote@latest", "https://getkommit.ai/api/mcp", "--header", "Authorization: Bearer km_test"],
+    });
+  });
+});
+
+describe("createWarpManualConfig", () => {
+  it("formats the Warp UI snippet with launch metadata", () => {
+    expect(createWarpManualConfig("memory", "km_test")).toEqual({
+      memory: {
+        command: process.platform === "win32" ? "npx.cmd" : "npx",
+        args: ["-y", "mcp-remote@latest", "https://getkommit.ai/api/mcp", "--header", "Authorization: Bearer km_test"],
+        env: {},
+        working_directory: null,
+        start_on_launch: true,
+      },
     });
   });
 });
