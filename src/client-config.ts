@@ -74,7 +74,8 @@ export const clientNames = Object.keys(getClientTargets());
 
 function normalizeScope(scope?: ConfigScope | boolean): ConfigScope {
   if (scope === true || scope === "project") return "project";
-  return "user";
+  if (scope === false || scope === undefined || scope === "user") return "user";
+  throw new Error(`Invalid config scope: ${String(scope)}. Use "user" or "project".`);
 }
 
 export function projectConfigClientNames(): string[] {

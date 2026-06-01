@@ -181,6 +181,13 @@ describe("client config", () => {
     expect(fs.existsSync(path.join(homeDir, ".codex", "config.toml"))).toBe(false);
   });
 
+  it("rejects invalid scope values instead of silently using user config", () => {
+    expect(() => getTarget("cursor", "local" as any)).toThrow(/Invalid config scope: local/);
+    expect(() => writeConfig("kommit", { command: "npx" }, "cursor", "local" as any)).toThrow(
+      /Invalid config scope: local/,
+    );
+  });
+
   it("fails with an actionable error for malformed JSONC without rewriting the file", () => {
     const configPath = path.join(projectDir, ".cursor", "mcp.json");
     mkdirp(path.dirname(configPath));
