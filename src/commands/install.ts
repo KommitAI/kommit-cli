@@ -1,12 +1,12 @@
 import type { ArgumentsCamelCase, Argv } from "yargs";
 import { green, red, blue } from "picocolors";
 import { logger } from "../logger";
-import { clientNames, isNativeUrlClient, writeConfig, type ClientConfig } from "../client-config";
+import { clientNames, getTarget, isNativeUrlClient, writeConfig, type ClientConfig, type ConfigScope } from "../client-config";
 import { authenticateViaBrowser, authenticateViaPrompt, validateKey } from "../auth";
 
 const MCP_URL = "https://getkommit.ai/api/mcp";
 
-export interface InstallArgs { client?: string; key?: string; global?: boolean; local?: boolean; name?: string; }
+export interface InstallArgs { client?: string; key?: string; scope?: ConfigScope; global?: boolean; local?: boolean; name?: string; }
 export const command = "$0";
 export const describe = "Install the Kommit MCP server";
 
@@ -14,9 +14,18 @@ export function builder(yargs: Argv<InstallArgs>): Argv {
   return yargs
     .option("client", { type: "string", description: "AI tool to install for", choices: clientNames })
     .option("key", { type: "string", description: "API key (skip browser auth)" })
-    .option("global", { type: "boolean", description: "Write to global config (available in all projects)", default: true })
-    .option("local", { type: "boolean", description: "Write to project-local config instead of global", default: false })
+    .option("scope", { type: "string", description: "Config scope", choices: ["user", "project"] as const })
+    .option("global", { type: "boolean", description: "Alias for --scope user" })
+    .option("local", { type: "boolean", description: "Alias for --scope project" })
     .option("name", { type: "string", description: "Server name in the config", default: "kommit" });
+}
+
+export function resolveConfigScope(argv: Pick<InstallArgs, "scope" | "global" | "local">): ConfigScope {
+  if (argv.global && argv.local) throw new Error("Use only one of --global or --local.");
+  if (argv.scope && (argv.global || argv.local)) throw new Error("Use either --scope or the legacy --global/--local flags.");
+  if (argv.local) return "project";
+  if (argv.global) return "user";
+  return argv.scope ?? "user";
 }
 
 export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
@@ -27,9 +36,14 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
     client = (await logger.prompt("Select a client:", { type: "select", options: clientNames.map((name) => ({ value: name, label: name })) })) as string;
   }
 
-  const local = argv.local === true;
+  let scope: ConfigScope;
+  try {
+    scope = resolveConfigScope(argv);
+    getTarget(client, scope);
+  } catch (err) { logger.error(red(err instanceof Error ? err.message : String(err))); process.exit(1); }
+
   const serverName = argv.name || "kommit";
-  logger.info(`Installing MCP server "${serverName}" for ${client}`);
+  logger.info(`Installing MCP server "${serverName}" for ${client} (${scope} scope)`);
 
   let apiKey = argv.key as string | undefined;
   if (!apiKey) {
@@ -69,7 +83,7 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
   }
 
   try {
-    const writtenPath = writeConfig(serverName, serverConfig, client, local);
+    const writtenPath = writeConfig(serverName, serverConfig, client, scope);
     logger.info(`Config written to: ${writtenPath}`);
   } catch (err) { logger.error(red(`Failed to write config: ${err}`)); process.exit(1); }
 

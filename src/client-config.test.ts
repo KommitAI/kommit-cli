@@ -1,0 +1,118 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import * as TOML from "@iarna/toml";
+import yaml from "js-yaml";
+import * as jsonc from "jsonc-parser";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { getTarget, projectConfigClientNames, writeConfig } from "./client-config";
+
+const originalCwd = process.cwd();
+const originalEnv = { ...process.env };
+
+let tempDir: string;
+let homeDir: string;
+let projectDir: string;
+
+function mkdirp(dir: string): void {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+describe("client config", () => {
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "kommit-cli-"));
+    homeDir = path.join(tempDir, "home");
+    projectDir = path.join(tempDir, "project");
+    mkdirp(homeDir);
+    mkdirp(projectDir);
+
+    process.env = {
+      ...originalEnv,
+      HOME: homeDir,
+      USERPROFILE: homeDir,
+      APPDATA: path.join(homeDir, "AppData", "Roaming"),
+      CODEX_HOME: path.join(homeDir, ".codex"),
+      XDG_CONFIG_HOME: path.join(homeDir, ".config"),
+    };
+    process.chdir(projectDir);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    process.env = { ...originalEnv };
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("writes project-scoped JSONC config without dropping unrelated content", () => {
+    const configPath = path.join(projectDir, ".cursor", "mcp.json");
+    mkdirp(path.dirname(configPath));
+    fs.writeFileSync(
+      configPath,
+      `{
+  // keep this comment
+  "mcpServers": {
+    "existing": {
+      "command": "old"
+    }
+  },
+  "otherSetting": true
+}
+`,
+    );
+
+    const writtenPath = writeConfig(
+      "kommit",
+      { type: "url", url: "https://getkommit.ai/api/mcp", headers: { Authorization: "Bearer test" } },
+      "cursor",
+      "project",
+    );
+
+    expect(fs.realpathSync(writtenPath)).toBe(fs.realpathSync(configPath));
+    const content = fs.readFileSync(configPath, "utf8");
+    expect(content).toContain("// keep this comment");
+
+    const parsed = jsonc.parse(content);
+    expect(parsed.otherSetting).toBe(true);
+    expect(parsed.mcpServers.existing.command).toBe("old");
+    expect(parsed.mcpServers.kommit.url).toBe("https://getkommit.ai/api/mcp");
+  });
+
+  it("writes YAML config while preserving other top-level keys", () => {
+    const configPath = path.join(homeDir, ".config", "goose", "config.yaml");
+    mkdirp(path.dirname(configPath));
+    fs.writeFileSync(configPath, "extensions:\n  old:\n    cmd: old\nother: true\n");
+
+    const writtenPath = writeConfig("kommit", { name: "kommit", cmd: "npx", args: ["-y"], enabled: true }, "goose", "user");
+
+    expect(writtenPath).toBe(configPath);
+    const parsed = yaml.load(fs.readFileSync(configPath, "utf8")) as Record<string, any>;
+    expect(parsed.other).toBe(true);
+    expect(parsed.extensions.old.cmd).toBe("old");
+    expect(parsed.extensions.kommit.cmd).toBe("npx");
+  });
+
+  it("writes TOML config while preserving existing settings", () => {
+    const configPath = path.join(homeDir, ".codex", "config.toml");
+    mkdirp(path.dirname(configPath));
+    fs.writeFileSync(configPath, 'model = "gpt-5"\n\n[mcp_servers.old]\ncommand = "old"\n');
+
+    const writtenPath = writeConfig("kommit", { command: "npx", args: ["-y", "mcp-remote@latest"] }, "codex", "user");
+
+    expect(writtenPath).toBe(configPath);
+    const parsed = TOML.parse(fs.readFileSync(configPath, "utf8")) as Record<string, any>;
+    expect(parsed.model).toBe("gpt-5");
+    expect(parsed.mcp_servers.old.command).toBe("old");
+    expect(parsed.mcp_servers.kommit.command).toBe("npx");
+  });
+
+  it("rejects project scope for clients that only have user config", () => {
+    expect(projectConfigClientNames()).toContain("cursor");
+    expect(projectConfigClientNames()).not.toContain("codex");
+    expect(() => getTarget("codex", "project")).toThrow(/codex does not support project-scoped config/);
+    expect(() => writeConfig("kommit", { command: "npx" }, "codex", "project")).toThrow(
+      /codex does not support project-scoped config/,
+    );
+    expect(fs.existsSync(path.join(homeDir, ".codex", "config.toml"))).toBe(false);
+  });
+});

@@ -1,5 +1,7 @@
 import http from "node:http";
 import { createHash, randomBytes } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { logger } from "./logger";
 import { green, red, yellow } from "picocolors";
 
@@ -7,6 +9,15 @@ const MCP_URL = "https://getkommit.ai/api/mcp";
 const CLI_AUTH_URL = "https://getkommit.ai/cli-auth";
 const EXCHANGE_URL = "https://getkommit.ai/api/cli-auth/exchange";
 const TIMEOUT_MS = 60_000;
+
+function getCliVersion(): string {
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")) as { version?: unknown };
+    return typeof packageJson.version === "string" ? packageJson.version : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 
 function isHeadless(): boolean {
   if (process.env.SSH_CLIENT || process.env.SSH_TTY) return true;
@@ -77,7 +88,7 @@ export async function validateKey(key: string): Promise<boolean> {
     const response = await fetch(MCP_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "kommit-cli", version: "1.0" } } }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "kommit-cli", version: getCliVersion() } } }),
     });
     if (!response.ok) return false;
     const data = await response.json();
