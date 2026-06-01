@@ -41,11 +41,14 @@ export function createServerConfig(client: string, serverName: string, apiKey: s
   if (client === "codex") {
     return { url: MCP_URL, http_headers: { Authorization: `Bearer ${apiKey}` } };
   }
-  if (client === "goose") {
-    return { name: serverName, cmd: npxCmd, args: stdioArgs, enabled: true, envs: {}, type: "stdio", timeout: 300 };
+  if (client === "gemini-cli") {
+    return { httpUrl: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
   if (client === "zed") {
-    return { source: "custom", command: npxCmd, args: stdioArgs, env: {} };
+    return { url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
+  }
+  if (client === "goose") {
+    return { name: serverName, cmd: npxCmd, args: stdioArgs, enabled: true, envs: {}, type: "stdio", timeout: 300 };
   }
   if (client === "opencode") {
     return { type: "remote", url: MCP_URL, enabled: true, headers: { Authorization: `Bearer ${apiKey}` } };
