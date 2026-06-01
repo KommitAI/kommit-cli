@@ -1,7 +1,7 @@
 import type { ArgumentsCamelCase, Argv } from "yargs";
 import { green, red, blue } from "picocolors";
 import { logger } from "../logger";
-import { clientNames, getTarget, isNativeUrlClient, writeConfig, type ClientConfig, type ConfigScope } from "../client-config";
+import { clientNames, getTarget, writeConfig, type ClientConfig, type ConfigScope } from "../client-config";
 import { authenticateViaBrowser, authenticateViaPrompt, validateKey } from "../auth";
 
 const MCP_URL = "https://getkommit.ai/api/mcp";
@@ -15,8 +15,8 @@ export function builder(yargs: Argv<InstallArgs>): Argv {
     .option("client", { type: "string", description: "AI tool to install for", choices: clientNames })
     .option("key", { type: "string", description: "API key (skip browser auth)" })
     .option("scope", { type: "string", description: "Config scope", choices: ["user", "project"] as const })
-    .option("global", { type: "boolean", description: "Alias for --scope user" })
-    .option("local", { type: "boolean", description: "Alias for --scope project" })
+    .option("global", { type: "boolean", description: "Legacy alias for --scope user" })
+    .option("local", { type: "boolean", description: "Legacy alias for --scope project" })
     .option("name", { type: "string", description: "Server name in the config", default: "kommit" });
 }
 
@@ -26,6 +26,31 @@ export function resolveConfigScope(argv: Pick<InstallArgs, "scope" | "global" | 
   if (argv.local) return "project";
   if (argv.global) return "user";
   return argv.scope ?? "user";
+}
+
+export function createServerConfig(client: string, serverName: string, apiKey: string): ClientConfig {
+  const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+  const stdioArgs = ["-y", "mcp-remote@latest", MCP_URL, "--header", `Authorization: Bearer ${apiKey}`];
+
+  if (client === "claude-code" || client === "vscode") {
+    return { type: "http", url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
+  }
+  if (client === "cursor") {
+    return { url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
+  }
+  if (client === "codex") {
+    return { url: MCP_URL, http_headers: { Authorization: `Bearer ${apiKey}` } };
+  }
+  if (client === "goose") {
+    return { name: serverName, cmd: npxCmd, args: stdioArgs, enabled: true, envs: {}, type: "stdio", timeout: 300 };
+  }
+  if (client === "zed") {
+    return { source: "custom", command: npxCmd, args: stdioArgs, env: {} };
+  }
+  if (client === "opencode") {
+    return { type: "remote", url: MCP_URL, enabled: true, headers: { Authorization: `Bearer ${apiKey}` } };
+  }
+  return { command: npxCmd, args: stdioArgs };
 }
 
 export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
@@ -64,23 +89,7 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
     logger.log(""); return;
   }
 
-  let serverConfig: ClientConfig;
-  const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
-  const stdioArgs = ["-y", "mcp-remote@latest", MCP_URL, "--header", `Authorization: Bearer ${apiKey}`];
-
-  if (isNativeUrlClient(client)) {
-    // Claude Code uses "http", Cursor/VS Code use "url"
-    const transportType = client === "claude-code" ? "http" : "url";
-    serverConfig = { type: transportType, url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
-  } else if (client === "goose") {
-    serverConfig = { name: serverName, cmd: npxCmd, args: stdioArgs, enabled: true, envs: {}, type: "stdio", timeout: 300 };
-  } else if (client === "zed") {
-    serverConfig = { source: "custom", command: npxCmd, args: stdioArgs, env: {} };
-  } else if (client === "opencode") {
-    serverConfig = { type: "remote", url: MCP_URL, enabled: true, headers: { Authorization: `Bearer ${apiKey}` } };
-  } else {
-    serverConfig = { command: npxCmd, args: stdioArgs };
-  }
+  const serverConfig = createServerConfig(client, serverName, apiKey);
 
   try {
     const writtenPath = writeConfig(serverName, serverConfig, client, scope);

@@ -6,7 +6,7 @@ import yaml from "js-yaml";
 import * as jsonc from "jsonc-parser";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { getTarget, projectConfigClientNames, writeConfig } from "./client-config";
+import { getTarget, projectConfigClientNames, readConfig, writeConfig } from "./client-config";
 
 const originalCwd = process.cwd();
 const originalEnv = { ...process.env };
@@ -78,6 +78,22 @@ describe("client config", () => {
     expect(parsed.mcpServers.kommit.url).toBe("https://getkommit.ai/api/mcp");
   });
 
+  it("writes VS Code config using the current servers key", () => {
+    const configPath = path.join(projectDir, ".vscode", "mcp.json");
+    const writtenPath = writeConfig(
+      "kommit",
+      { type: "http", url: "https://getkommit.ai/api/mcp", headers: { Authorization: "Bearer test" } },
+      "vscode",
+      "project",
+    );
+
+    expect(fs.realpathSync(writtenPath)).toBe(fs.realpathSync(configPath));
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.servers.kommit.type).toBe("http");
+    expect(parsed.servers.kommit.url).toBe("https://getkommit.ai/api/mcp");
+    expect(parsed.mcpServers).toBeUndefined();
+  });
+
   it("writes YAML config while preserving other top-level keys", () => {
     const configPath = path.join(homeDir, ".config", "goose", "config.yaml");
     mkdirp(path.dirname(configPath));
@@ -106,6 +122,23 @@ describe("client config", () => {
     expect(parsed.mcp_servers.kommit.command).toBe("npx");
   });
 
+  it("writes Codex native HTTP config in TOML", () => {
+    const configPath = path.join(homeDir, ".codex", "config.toml");
+    mkdirp(path.dirname(configPath));
+
+    writeConfig(
+      "kommit",
+      { url: "https://getkommit.ai/api/mcp", http_headers: { Authorization: "Bearer test" } },
+      "codex",
+      "user",
+    );
+
+    const parsed = TOML.parse(fs.readFileSync(configPath, "utf8")) as Record<string, any>;
+    expect(parsed.mcp_servers.kommit.url).toBe("https://getkommit.ai/api/mcp");
+    expect(parsed.mcp_servers.kommit.http_headers.Authorization).toBe("Bearer test");
+    expect(parsed.mcp_servers.kommit.command).toBeUndefined();
+  });
+
   it("rejects project scope for clients that only have user config", () => {
     expect(projectConfigClientNames()).toContain("cursor");
     expect(projectConfigClientNames()).not.toContain("codex");
@@ -114,5 +147,41 @@ describe("client config", () => {
       /codex does not support project-scoped config/,
     );
     expect(fs.existsSync(path.join(homeDir, ".codex", "config.toml"))).toBe(false);
+  });
+
+  it("fails with an actionable error for malformed JSONC without rewriting the file", () => {
+    const configPath = path.join(projectDir, ".cursor", "mcp.json");
+    mkdirp(path.dirname(configPath));
+    const originalContent = "{\n  \"mcpServers\": {\n";
+    fs.writeFileSync(configPath, originalContent);
+
+    expect(() => writeConfig("kommit", { command: "npx" }, "cursor", "project")).toThrow(
+      /Could not parse JSONC config[\s\S]*Fix the file and rerun; no changes were written/,
+    );
+    expect(fs.readFileSync(configPath, "utf8")).toBe(originalContent);
+  });
+
+  it("fails with an actionable error for malformed YAML without rewriting the file", () => {
+    const configPath = path.join(homeDir, ".config", "goose", "config.yaml");
+    mkdirp(path.dirname(configPath));
+    const originalContent = "extensions:\n  kommit: [unterminated\n";
+    fs.writeFileSync(configPath, originalContent);
+
+    expect(() => writeConfig("kommit", { command: "npx" }, "goose", "user")).toThrow(
+      /Could not parse YAML config[\s\S]*Fix the file and rerun; no changes were written/,
+    );
+    expect(fs.readFileSync(configPath, "utf8")).toBe(originalContent);
+  });
+
+  it("fails with an actionable error for malformed TOML without rewriting the file", () => {
+    const configPath = path.join(homeDir, ".codex", "config.toml");
+    mkdirp(path.dirname(configPath));
+    const originalContent = "[mcp_servers.kommit\ncommand = \"npx\"\n";
+    fs.writeFileSync(configPath, originalContent);
+
+    expect(() => readConfig("codex", "user")).toThrow(
+      /Could not parse TOML config[\s\S]*Fix the file and rerun; no changes were written/,
+    );
+    expect(fs.readFileSync(configPath, "utf8")).toBe(originalContent);
   });
 });

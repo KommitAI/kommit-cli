@@ -5,9 +5,12 @@
   "bin": {
     "kommit": "./bin/run"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "files": [
     "dist",
-    "bin"
+    "bin/run"
   ],
   "scripts": {
     "build": "tsup-node",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveConfigScope } from "./install";
+import { createServerConfig, resolveConfigScope } from "./install";
 
 describe("resolveConfigScope", () => {
   it("defaults to user scope", () => {
@@ -18,5 +18,29 @@ describe("resolveConfigScope", () => {
     expect(() => resolveConfigScope({ global: true, local: true })).toThrow(/Use only one/);
     expect(() => resolveConfigScope({ scope: "project", global: true })).toThrow(/Use either --scope/);
     expect(() => resolveConfigScope({ scope: "user", local: true })).toThrow(/Use either --scope/);
+  });
+});
+
+describe("createServerConfig", () => {
+  it("uses current HTTP config shape for VS Code", () => {
+    expect(createServerConfig("vscode", "kommit", "km_test")).toEqual({
+      type: "http",
+      url: "https://getkommit.ai/api/mcp",
+      headers: { Authorization: "Bearer km_test" },
+    });
+  });
+
+  it("uses Cursor's mcp.json remote URL shape", () => {
+    expect(createServerConfig("cursor", "kommit", "km_test")).toEqual({
+      url: "https://getkommit.ai/api/mcp",
+      headers: { Authorization: "Bearer km_test" },
+    });
+  });
+
+  it("uses Codex's native HTTP TOML shape", () => {
+    expect(createServerConfig("codex", "kommit", "km_test")).toEqual({
+      url: "https://getkommit.ai/api/mcp",
+      http_headers: { Authorization: "Bearer km_test" },
+    });
   });
 });
