@@ -6,20 +6,26 @@ import * as TOML from "@iarna/toml";
 import yaml from "js-yaml";
 import * as jsonc from "jsonc-parser";
 
-import { logger } from "./logger";
-
 // biome-ignore lint/suspicious/noExplicitAny: flexible config structure
 export type ClientConfig = Record<string, any>;
 export type ConfigScope = "user" | "project";
 
-interface ClientTarget {
+interface FileClientTarget {
   path: string;
   localPath?: string;
   configKey: string;
   format?: "json" | "yaml" | "toml";
+  manual?: false;
 }
 
-function getFormatName(target: ClientTarget): string {
+interface ManualClientTarget {
+  manual: true;
+  configKey: string;
+}
+
+type ClientTarget = FileClientTarget | ManualClientTarget;
+
+function getFormatName(target: FileClientTarget): string {
   if (target.format === "yaml") return "YAML";
   if (target.format === "toml") return "TOML";
   return "JSONC";
@@ -65,7 +71,7 @@ function getClientTargets(): Record<string, ClientTarget> {
     witsy: { path: path.join(baseDir, "Witsy", "settings.json"), configKey: "mcpServers" },
     enconvo: { path: path.join(homeDir, ".config", "enconvo", "mcp_config.json"), configKey: "mcpServers" },
     "aider-desk": { path: process.platform === "win32" ? path.join(process.env.APPDATA || path.join(homeDir, "AppData", "Roaming"), "aider-desk", "settings.json") : process.platform === "darwin" ? path.join(homeDir, "Library", "Application Support", "aider-desk", "settings.json") : path.join(homeDir, ".config", "aider-desk", "settings.json"), configKey: "mcpServers" },
-    warp: { path: "no-local-config", configKey: "mcpServers" },
+    warp: { manual: true, configKey: "mcpServers" },
   };
 }
 
@@ -79,7 +85,7 @@ function normalizeScope(scope?: ConfigScope | boolean): ConfigScope {
 
 export function projectConfigClientNames(): string[] {
   return Object.entries(getClientTargets())
-    .filter(([, target]) => !!target.localPath)
+    .filter(([, target]) => !target.manual && !!target.localPath)
     .map(([client]) => client);
 }
 
@@ -88,12 +94,19 @@ export function getTarget(client: string, scope?: ConfigScope | boolean): Client
   const target = targets[client.toLowerCase()];
   if (!target) throw new Error(`Unknown client: ${client}`);
   if (normalizeScope(scope) === "project") {
-    if (!target.localPath) {
+    if (target.manual || !target.localPath) {
       throw new Error(
         `${client} does not support project-scoped config. Supported project-scoped clients: ${projectConfigClientNames().join(", ")}`,
       );
     }
     return { ...target, path: target.localPath };
+  }
+  return target;
+}
+
+function requireFileTarget(client: string, target: ClientTarget): FileClientTarget {
+  if (target.manual) {
+    throw new Error(`${client} requires manual setup through its UI. No config file was read or written.`);
   }
   return target;
 }
@@ -165,7 +178,7 @@ function parseJsoncConfig(content: string, targetPath: string): ClientConfig {
   return parsed as ClientConfig;
 }
 
-function parseConfigContent(content: string, target: ClientTarget): ClientConfig {
+function parseConfigContent(content: string, target: FileClientTarget): ClientConfig {
   try {
     let parsed: unknown;
     if (target.format === "yaml") parsed = yaml.load(content) || {};
@@ -203,14 +216,14 @@ function writeFileAtomic(targetPath: string, content: string): void {
 }
 
 export function readConfig(client: string, scope?: ConfigScope | boolean): ClientConfig {
-  const target = getTarget(client, scope);
+  const target = requireFileTarget(client, getTarget(client, scope));
   if (!fs.existsSync(target.path)) { const config: ClientConfig = {}; setNestedValue(config, target.configKey, {}); return config; }
   const content = fs.readFileSync(target.path, "utf8");
   return parseConfigContent(content, target);
 }
 
 export function writeConfig(serverName: string, serverConfig: ClientConfig, client: string, scope?: ConfigScope | boolean): string {
-  const target = getTarget(client, scope);
+  const target = requireFileTarget(client, getTarget(client, scope));
   const configDir = path.dirname(target.path);
   if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 

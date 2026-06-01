@@ -218,6 +218,16 @@ describe("client config", () => {
     expect(parsed.mcpServers.kommit.command).toBe("npx");
   });
 
+  it("treats Warp as manual-only and never writes a placeholder config file", () => {
+    expect(projectConfigClientNames()).not.toContain("warp");
+    expect(() => getTarget("warp", "project")).toThrow(/warp does not support project-scoped config/);
+    expect(() => readConfig("warp", "user")).toThrow(/warp requires manual setup[\s\S]*No config file/);
+    expect(() => writeConfig("kommit", { command: "npx" }, "warp", "user")).toThrow(
+      /warp requires manual setup[\s\S]*No config file/,
+    );
+    expect(fs.existsSync(path.join(projectDir, "no-local-config"))).toBe(false);
+  });
+
   it("writes YAML config while preserving other top-level keys", () => {
     const configPath = path.join(homeDir, ".config", "goose", "config.yaml");
     mkdirp(path.dirname(configPath));
