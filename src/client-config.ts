@@ -10,6 +10,7 @@ import { logger } from "./logger";
 
 // biome-ignore lint/suspicious/noExplicitAny: flexible config structure
 export type ClientConfig = Record<string, any>;
+export type ConfigScope = "user" | "project";
 
 interface ClientTarget {
   path: string;
@@ -20,7 +21,7 @@ interface ClientTarget {
 }
 
 function getPlatformPaths() {
-  const homeDir = os.homedir();
+  const homeDir = getHomeDir();
   const platform = process.platform;
   if (platform === "win32") {
     const base = process.env.APPDATA || path.join(homeDir, "AppData", "Roaming");
@@ -33,9 +34,14 @@ function getPlatformPaths() {
   return { baseDir: base, vscodePath: path.join("Code", "User") };
 }
 
+function getHomeDir(): string {
+  if (process.platform === "win32") return process.env.USERPROFILE || os.homedir();
+  return process.env.HOME || os.homedir();
+}
+
 function getClientTargets(): Record<string, ClientTarget> {
   const { baseDir, vscodePath } = getPlatformPaths();
-  const homeDir = os.homedir();
+  const homeDir = getHomeDir();
   return {
     "claude-code": { path: path.join(homeDir, ".claude.json"), localPath: path.join(process.cwd(), ".mcp.json"), configKey: "mcpServers", nativeUrl: true },
     cursor: { path: path.join(homeDir, ".cursor", "mcp.json"), localPath: path.join(process.cwd(), ".cursor", "mcp.json"), configKey: "mcpServers", nativeUrl: true },
@@ -60,11 +66,29 @@ function getClientTargets(): Record<string, ClientTarget> {
 
 export const clientNames = Object.keys(getClientTargets());
 
-export function getTarget(client: string, local?: boolean): ClientTarget {
+function normalizeScope(scope?: ConfigScope | boolean): ConfigScope {
+  if (scope === true || scope === "project") return "project";
+  return "user";
+}
+
+export function projectConfigClientNames(): string[] {
+  return Object.entries(getClientTargets())
+    .filter(([, target]) => !!target.localPath)
+    .map(([client]) => client);
+}
+
+export function getTarget(client: string, scope?: ConfigScope | boolean): ClientTarget {
   const targets = getClientTargets();
   const target = targets[client.toLowerCase()];
   if (!target) throw new Error(`Unknown client: ${client}`);
-  if (local && target.localPath) return { ...target, path: target.localPath };
+  if (normalizeScope(scope) === "project") {
+    if (!target.localPath) {
+      throw new Error(
+        `${client} does not support project-scoped config. Supported project-scoped clients: ${projectConfigClientNames().join(", ")}`,
+      );
+    }
+    return { ...target, path: target.localPath };
+  }
   return target;
 }
 
@@ -84,8 +108,8 @@ function setNestedValue(obj: ClientConfig, keyPath: string, value: ClientConfig)
   parent[last] = value;
 }
 
-export function readConfig(client: string, local?: boolean): ClientConfig {
-  const target = getTarget(client, local);
+export function readConfig(client: string, scope?: ConfigScope | boolean): ClientConfig {
+  const target = getTarget(client, scope);
   if (!fs.existsSync(target.path)) { const config: ClientConfig = {}; setNestedValue(config, target.configKey, {}); return config; }
   const content = fs.readFileSync(target.path, "utf8");
   if (target.format === "yaml") return (yaml.load(content) as ClientConfig) || {};
@@ -93,8 +117,8 @@ export function readConfig(client: string, local?: boolean): ClientConfig {
   return jsonc.parse(content) as ClientConfig;
 }
 
-export function writeConfig(serverName: string, serverConfig: ClientConfig, client: string, local?: boolean): string {
-  const target = getTarget(client, local);
+export function writeConfig(serverName: string, serverConfig: ClientConfig, client: string, scope?: ConfigScope | boolean): string {
+  const target = getTarget(client, scope);
   const configDir = path.dirname(target.path);
   if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 

@@ -14,24 +14,24 @@ Kommit gives your AI tools persistent project memory — specs, decisions, learn
 npx @kommit/cli@latest --client claude-code
 ```
 
-This opens your browser to authenticate, then writes the MCP config to your project. Restart your editor and Kommit is connected.
+This opens your browser to authenticate, then writes the MCP config to your user config by default. Restart your editor and Kommit is connected.
 
 ## Supported Tools
 
-| Client | Transport | Config Location |
-|--------|-----------|-----------------|
-| Claude Code | Native URL | `.mcp.json` |
-| Cursor | Native URL | `.cursor/mcp.json` |
-| VS Code | Native URL | `.vscode/mcp.json` |
-| Claude Desktop | stdio | `claude_desktop_config.json` |
-| Windsurf | stdio | `~/.codeium/windsurf/mcp_config.json` |
-| Cline | stdio | VS Code global storage |
-| Zed | stdio | `~/.config/zed/settings.json` |
-| Codex | stdio | `~/.codex/config.toml` |
-| Goose | stdio | `~/.config/goose/config.yaml` |
-| Gemini CLI | stdio | `~/.gemini/settings.json` |
-| Aider | stdio | `~/.aider/mcp.yml` |
-| And more... | | |
+| Client | Transport | Default Config Location | Project Config |
+|--------|-----------|-------------------------|----------------|
+| Claude Code | Native URL | `~/.claude.json` | `.mcp.json` |
+| Cursor | Native URL | `~/.cursor/mcp.json` | `.cursor/mcp.json` |
+| VS Code | Native URL | VS Code user `mcp.json` | `.vscode/mcp.json` |
+| Claude Desktop | stdio | `claude_desktop_config.json` | Not supported |
+| Windsurf | stdio | `~/.codeium/windsurf/mcp_config.json` | Not supported |
+| Cline | stdio | VS Code global storage | Not supported |
+| Zed | stdio | `~/.config/zed/settings.json` | Not supported |
+| Codex | stdio | `~/.codex/config.toml` | Not supported |
+| Goose | stdio | `~/.config/goose/config.yaml` | Not supported |
+| Gemini CLI | stdio | `~/.gemini/settings.json` | `.gemini/settings.json` |
+| Aider | stdio | `~/.aider/mcp.yml` | `.aider.mcp.yml` |
+| More clients | varies | Client-specific user config | Client-specific; unsupported clients fail clearly |
 
 Clients with Native URL transport connect directly to the Kommit API — no proxy process needed. Stdio clients use `mcp-remote` as a bridge.
 
@@ -40,7 +40,9 @@ Clients with Native URL transport connect directly to the Kommit API — no prox
 ```
 --client    AI tool to install for (interactive prompt if omitted)
 --key       API key — skip browser auth (useful for CI/CD)
---global    Write to global config instead of project-local
+--scope     Config scope: user or project (default: user)
+--global    Alias for --scope user
+--local     Alias for --scope project
 --name      Server name in the config (default: "kommit")
 ```
 
@@ -50,8 +52,8 @@ Clients with Native URL transport connect directly to the Kommit API — no prox
 # Interactive — prompts you to pick a client
 npx @kommit/cli@latest
 
-# Direct install for Cursor (global config)
-npx @kommit/cli@latest --client cursor --global
+# Direct install for Cursor (project config)
+npx @kommit/cli@latest --client cursor --scope project
 
 # Headless / CI — provide key directly
 npx @kommit/cli@latest --client claude-code --key km_your_key_here
