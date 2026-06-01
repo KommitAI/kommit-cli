@@ -28,10 +28,10 @@ Requires Node.js 20 or newer.
 | Claude Desktop | stdio | `claude_desktop_config.json` | Not supported |
 | Windsurf | stdio | `~/.codeium/windsurf/mcp_config.json` | Not supported |
 | Cline | stdio | VS Code global storage | Not supported |
-| Zed | stdio | `~/.config/zed/settings.json` | Not supported |
+| Zed | Native remote URL | `~/.config/zed/settings.json` | Not supported |
 | Codex | Native HTTP | `~/.codex/config.toml` | Not supported |
 | Goose | stdio | `~/.config/goose/config.yaml` | Not supported |
-| Gemini CLI | stdio | `~/.gemini/settings.json` | `.gemini/settings.json` |
+| Gemini CLI | Native HTTP | `~/.gemini/settings.json` | `.gemini/settings.json` |
 | Aider | stdio | `~/.aider/mcp.yml` | `.aider.mcp.yml` |
 | More clients | varies | Client-specific user config | Client-specific; unsupported clients fail clearly |
 

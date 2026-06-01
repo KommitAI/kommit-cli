@@ -43,4 +43,18 @@ describe("createServerConfig", () => {
       http_headers: { Authorization: "Bearer km_test" },
     });
   });
+
+  it("uses Gemini CLI's streamable HTTP config shape", () => {
+    expect(createServerConfig("gemini-cli", "kommit", "km_test")).toEqual({
+      httpUrl: "https://getkommit.ai/api/mcp",
+      headers: { Authorization: "Bearer km_test" },
+    });
+  });
+
+  it("uses Zed's remote context server config shape", () => {
+    expect(createServerConfig("zed", "kommit", "km_test")).toEqual({
+      url: "https://getkommit.ai/api/mcp",
+      headers: { Authorization: "Bearer km_test" },
+    });
+  });
 });

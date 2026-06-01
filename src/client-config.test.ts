@@ -94,6 +94,38 @@ describe("client config", () => {
     expect(parsed.mcpServers).toBeUndefined();
   });
 
+  it("writes Gemini CLI streamable HTTP config", () => {
+    const configPath = path.join(projectDir, ".gemini", "settings.json");
+    const writtenPath = writeConfig(
+      "kommit",
+      { httpUrl: "https://getkommit.ai/api/mcp", headers: { Authorization: "Bearer test" } },
+      "gemini-cli",
+      "project",
+    );
+
+    expect(fs.realpathSync(writtenPath)).toBe(fs.realpathSync(configPath));
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.mcpServers.kommit.httpUrl).toBe("https://getkommit.ai/api/mcp");
+    expect(parsed.mcpServers.kommit.headers.Authorization).toBe("Bearer test");
+    expect(parsed.mcpServers.kommit.command).toBeUndefined();
+  });
+
+  it("writes Zed remote context server config", () => {
+    const configPath = path.join(homeDir, ".config", "zed", "settings.json");
+    const writtenPath = writeConfig(
+      "kommit",
+      { url: "https://getkommit.ai/api/mcp", headers: { Authorization: "Bearer test" } },
+      "zed",
+      "user",
+    );
+
+    expect(writtenPath).toBe(configPath);
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.context_servers.kommit.url).toBe("https://getkommit.ai/api/mcp");
+    expect(parsed.context_servers.kommit.headers.Authorization).toBe("Bearer test");
+    expect(parsed.context_servers.kommit.command).toBeUndefined();
+  });
+
   it("writes YAML config while preserving other top-level keys", () => {
     const configPath = path.join(homeDir, ".config", "goose", "config.yaml");
     mkdirp(path.dirname(configPath));
