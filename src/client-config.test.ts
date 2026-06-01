@@ -19,6 +19,12 @@ function mkdirp(dir: string): void {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function appSupportDir(): string {
+  if (process.platform === "win32") return process.env.APPDATA!;
+  if (process.platform === "darwin") return path.join(homeDir, "Library", "Application Support");
+  return path.join(homeDir, ".config");
+}
+
 describe("client config", () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "kommit-cli-"));
@@ -141,6 +147,75 @@ describe("client config", () => {
     expect(parsed.mcp.kommit.type).toBe("remote");
     expect(parsed.mcp.kommit.url).toBe("https://getkommit.ai/api/mcp");
     expect(parsed.mcp.kommit.headers.Authorization).toBe("Bearer test");
+  });
+
+  it("writes Droid project config under .factory/mcp.json", () => {
+    const configPath = path.join(projectDir, ".factory", "mcp.json");
+    const writtenPath = writeConfig(
+      "kommit",
+      { type: "http", url: "https://getkommit.ai/api/mcp", headers: { Authorization: "Bearer test" } },
+      "droid",
+      "project",
+    );
+
+    expect(fs.realpathSync(writtenPath)).toBe(fs.realpathSync(configPath));
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.mcpServers.kommit.type).toBe("http");
+    expect(parsed.mcpServers.kommit.url).toBe("https://getkommit.ai/api/mcp");
+    expect(parsed.mcpServers.kommit.headers.Authorization).toBe("Bearer test");
+    expect(parsed.mcpServers.kommit.command).toBeUndefined();
+  });
+
+  it("writes Roo Cline config to VS Code global storage", () => {
+    const configPath = path.join(
+      appSupportDir(),
+      "Code",
+      "User",
+      "globalStorage",
+      "rooveterinaryinc.roo-cline",
+      "settings",
+      "mcp_settings.json",
+    );
+    const writtenPath = writeConfig("kommit", { command: "npx", args: ["-y", "mcp-remote@latest"] }, "roo-cline", "user");
+
+    expect(writtenPath).toBe(configPath);
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.mcpServers.kommit.command).toBe("npx");
+  });
+
+  it("writes Witsy config under application support", () => {
+    const configPath = path.join(
+      appSupportDir(),
+      "Witsy",
+      "settings.json",
+    );
+    const writtenPath = writeConfig("kommit", { command: "npx", args: ["-y", "mcp-remote@latest"] }, "witsy", "user");
+
+    expect(writtenPath).toBe(configPath);
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.mcpServers.kommit.command).toBe("npx");
+  });
+
+  it("writes Enconvo config under .config/enconvo", () => {
+    const configPath = path.join(homeDir, ".config", "enconvo", "mcp_config.json");
+    const writtenPath = writeConfig("kommit", { command: "npx", args: ["-y", "mcp-remote@latest"] }, "enconvo", "user");
+
+    expect(writtenPath).toBe(configPath);
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.mcpServers.kommit.command).toBe("npx");
+  });
+
+  it("writes Aider Desk config to its user settings file", () => {
+    const configPath = path.join(
+      appSupportDir(),
+      "aider-desk",
+      "settings.json",
+    );
+    const writtenPath = writeConfig("kommit", { command: "npx", args: ["-y", "mcp-remote@latest"] }, "aider-desk", "user");
+
+    expect(writtenPath).toBe(configPath);
+    const parsed = jsonc.parse(fs.readFileSync(configPath, "utf8"));
+    expect(parsed.mcpServers.kommit.command).toBe("npx");
   });
 
   it("writes YAML config while preserving other top-level keys", () => {

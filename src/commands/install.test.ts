@@ -106,4 +106,12 @@ describe("createServerConfig", () => {
       headers: { Authorization: "Bearer km_test" },
     });
   });
+
+  it("uses Droid's native HTTP MCP config shape", () => {
+    expect(createServerConfig("droid", "kommit", "km_test")).toEqual({
+      type: "http",
+      url: "https://getkommit.ai/api/mcp",
+      headers: { Authorization: "Bearer km_test" },
+    });
+  });
 });
