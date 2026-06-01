@@ -28,13 +28,18 @@ Requires Node.js 20 or newer.
 | Claude Desktop | stdio | `claude_desktop_config.json` | Not supported |
 | Windsurf | stdio | `~/.codeium/windsurf/mcp_config.json` | Not supported |
 | Cline | stdio | VS Code global storage | Not supported |
+| Roo Cline | stdio | VS Code global storage | Not supported |
 | Zed | Native remote URL | `~/.config/zed/settings.json` | Not supported |
 | Codex | Native HTTP | `~/.codex/config.toml` | Not supported |
 | Goose | stdio | `~/.config/goose/config.yaml` | Not supported |
 | Gemini CLI | Native HTTP | `~/.gemini/settings.json` | `.gemini/settings.json` |
 | Aider | stdio | `~/.aider/mcp.yml` | `.aider.mcp.yml` |
+| Droid | Native HTTP | `~/.factory/mcp.json` | `.factory/mcp.json` |
 | OpenCode | Native remote URL | `~/.config/opencode/opencode.json` | `opencode.json` |
-| More clients | varies | Client-specific user config | Client-specific; unsupported clients fail clearly |
+| Witsy | stdio | Witsy user `settings.json` | Not supported |
+| Enconvo | stdio | `~/.config/enconvo/mcp_config.json` | Not supported |
+| Aider Desk | stdio | Aider Desk user `settings.json` | Not supported |
+| Warp | stdio bridge | Manual setup in Warp UI | Not supported |
 
 Clients with native remote transport connect directly to the Kommit API — no proxy process needed. Stdio clients use `mcp-remote` as a bridge.
 

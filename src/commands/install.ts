@@ -47,6 +47,9 @@ export function createServerConfig(client: string, serverName: string, apiKey: s
   if (client === "gemini-cli") {
     return { httpUrl: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
+  if (client === "droid") {
+    return { type: "http", url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
+  }
   if (client === "zed") {
     return { url: MCP_URL, headers: { Authorization: `Bearer ${apiKey}` } };
   }
