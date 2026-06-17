@@ -1,6 +1,15 @@
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockOpen } = vi.hoisted(() => ({
+  mockOpen: vi.fn(async (_url: string) => undefined),
+}));
+
+vi.mock("open", () => ({
+  default: mockOpen,
+}));
 
 vi.mock("./logger", () => ({
   logger: {
@@ -17,6 +26,17 @@ import { logger } from "./logger";
 const originalEnv = { ...process.env };
 const originalFetch = global.fetch;
 const packageVersion = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")).version as string;
+
+function requestLocalCallback(url: string): Promise<{ statusCode: number | undefined; body: string }> {
+  return new Promise((resolve, reject) => {
+    http.get(url, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => { body += chunk; });
+      res.on("end", () => { resolve({ statusCode: res.statusCode, body }); });
+    }).on("error", reject);
+  });
+}
 
 describe("generatePkcePair", () => {
   it("generates RFC 7636-compatible verifier and challenge strings", () => {
@@ -43,6 +63,50 @@ describe("authenticateViaBrowser", () => {
     await expect(authenticateViaBrowser()).resolves.toBeNull();
 
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Headless environment detected"));
+  });
+
+  it("keeps a localhost callback server open and exchanges the auth code", async () => {
+    process.env = { ...originalEnv, DISPLAY: originalEnv.DISPLAY ?? ":99" };
+    delete process.env.SSH_CLIENT;
+    delete process.env.SSH_TTY;
+
+    let openedUrl = "";
+    mockOpen.mockImplementation(async (url: string) => {
+      openedUrl = String(url);
+    });
+
+    const fetchMock = vi.fn(async () => ({
+      json: async () => ({ key: "km_browser" }),
+    })) as unknown as typeof fetch;
+    global.fetch = fetchMock;
+
+    const authPromise = authenticateViaBrowser();
+    await vi.waitFor(() => expect(openedUrl).toContain("https://getkommit.ai/cli-auth?"));
+
+    const authUrl = new URL(openedUrl);
+    const port = authUrl.searchParams.get("port");
+    expect(port).toMatch(/^\d+$/);
+    expect(authUrl.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(authUrl.searchParams.get("code_challenge_method")).toBe("S256");
+
+    const response = await requestLocalCallback(`http://127.0.0.1:${port}/callback?code=test_code`);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain("Authenticated!");
+    await expect(authPromise).resolves.toBe("km_browser");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://getkommit.ai/api/cli-auth/exchange",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: expect.any(String),
+      }),
+    );
+    const [, init] = vi.mocked(fetchMock).mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toEqual({
+      code: "test_code",
+      code_verifier: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+    });
   });
 });
 

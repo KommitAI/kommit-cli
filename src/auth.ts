@@ -8,7 +8,7 @@ import { green, red, yellow } from "picocolors";
 const MCP_URL = "https://getkommit.ai/api/mcp";
 const CLI_AUTH_URL = "https://getkommit.ai/cli-auth";
 const EXCHANGE_URL = "https://getkommit.ai/api/cli-auth/exchange";
-const TIMEOUT_MS = 60_000;
+const TIMEOUT_MS = 5 * 60_000;
 
 function getCliVersion(): string {
   try {
@@ -73,7 +73,7 @@ export async function authenticateViaBrowser(): Promise<string | null> {
       openBrowser(authUrl.toString()).catch(() => { logger.warn(yellow("Could not open browser.")); cleanup(); resolve(null); });
     });
 
-    const timer = setTimeout(() => { logger.warn(yellow("Browser authentication timed out.")); cleanup(); resolve(null); }, TIMEOUT_MS);
+    const timer = setTimeout(() => { logger.warn(yellow("Browser authentication timed out after 5 minutes.")); cleanup(); resolve(null); }, TIMEOUT_MS);
     function cleanup() { clearTimeout(timer); server.close(); }
   });
 }
