@@ -1,0 +1,9 @@
+# kommit-agent-policy: v1
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = "npm ci"
+
+[prompts]
+general = "Work on one ticket or slice. Read AGENTS.md. Inspect only linked specifications and affected seams. Stay single-agent unless one independent read-only subtask clearly helps. Run focused validation first and broad validation at most once near the requested boundary. Stop at the requested lifecycle boundary."
+code_review = "Review the requested base diff only. Focus on correctness, regressions, security, and missing focused tests. Do not re-explore unrelated architecture, spawn review subagents, or rerun the full suite. Return concise findings with file references."
