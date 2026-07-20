@@ -32,7 +32,7 @@ vi.mock("../client-config", () => ({
 }));
 
 import { authenticateViaBrowser, authenticateViaPrompt, validateKey } from "../auth";
-import { writeConfig } from "../client-config";
+import { getTarget, writeConfig } from "../client-config";
 import { logger } from "../logger";
 import { handler } from "./install";
 
@@ -84,6 +84,19 @@ describe("handler auth ordering", () => {
     expect(authenticateViaBrowser).toHaveBeenCalledOnce();
     expect(authenticateViaPrompt).toHaveBeenCalledOnce();
     expect(validateKey).toHaveBeenCalledWith("km_prompt");
+  });
+
+  it("aborts clearly when interactive client selection is cancelled", async () => {
+    vi.mocked(logger.prompt).mockResolvedValue(undefined as unknown as string);
+
+    await expect(handler({ scope: "user", key: "km_test", _: [], $0: "kommit" } as any)).rejects.toThrow("process.exit:1");
+
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("No client selected"));
+    expect(getTarget).not.toHaveBeenCalled();
+    expect(validateKey).not.toHaveBeenCalled();
+    expect(authenticateViaBrowser).not.toHaveBeenCalled();
+    expect(authenticateViaPrompt).not.toHaveBeenCalled();
+    expect(writeConfig).not.toHaveBeenCalled();
   });
 
   it("prints Warp manual setup config without writing a config file", async () => {

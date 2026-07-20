@@ -98,6 +98,10 @@ export async function handler(argv: ArgumentsCamelCase<InstallArgs>) {
   if (!client) {
     client = (await logger.prompt("Select a client:", { type: "select", options: clientNames.map((name) => ({ value: name, label: name })) })) as string;
   }
+  if (typeof client !== "string" || client.trim() === "") {
+    logger.error(red("No client selected. Aborting."));
+    process.exit(1);
+  }
 
   let scope: ConfigScope;
   try {
