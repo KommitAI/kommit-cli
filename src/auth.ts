@@ -84,10 +84,13 @@ export async function authenticateViaPrompt(): Promise<string> {
 }
 
 export async function validateKey(key: string): Promise<boolean> {
+  const apiKey = key.trim();
+  if (!apiKey) return false;
+
   try {
     const response = await fetch(MCP_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Authorization": `Bearer ${key}` },
+      headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Authorization": `Bearer ${apiKey}` },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "kommit-cli", version: getCliVersion() } } }),
     });
     if (!response.ok) return false;
